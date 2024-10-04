@@ -1,57 +1,59 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
-from datetime import timedelta
+import pandas as pd
+import psycopg2
+from sqlalchemy import create_engine
 
-# Funções de exemplo para as etapas do ETL
-def extract(**kwargs):
-    # Código de extração de dados
-    pass
+# Função para extração
+def extract():
+    df = pd.read_csv('/opt/airflow/data/sales_data.csv')
+    df.to_csv('/opt/airflow/data/extracted_data.csv', index=False)
+    print("Dados extraídos com sucesso")
 
-def transform(**kwargs):
-    # Código de transformação de dados
-    pass
+# Função para transformação
+def transform():
+    df = pd.read_csv('/opt/airflow/data/extracted_data.csv')
+    df['Sales'] = df['Sales'] * 1.1  # Exemplo: adicionar 10% às vendas
+    df.to_csv('/opt/airflow/data/transformed_data.csv', index=False)
+    print("Dados transformados com sucesso")
 
-def load(**kwargs):
-    # Código de carga de dados
-    pass
+# Função para carga
+def load():
+    # Conexão com o banco de dados PostgreSQL
+    conn_str = "postgresql://username:password@postgres_host:postgres_port/db_name"
+    engine = create_engine(conn_str)
 
-# Definição da DAG
+    df = pd.read_csv('/opt/airflow/data/transformed_data.csv')
+    
+    # Carregar os dados no PostgreSQL
+    df.to_sql('sales', engine, if_exists='replace', index=False)
+    print("Dados carregados com sucesso")
+
 default_args = {
     'owner': 'airflow',
-    'depends_on_past': False,
     'start_date': days_ago(1),
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retries': 1
 }
 
-dag = DAG(
-    'etl_example',
-    default_args=default_args,
-    description='ETL example DAG',
-    schedule_interval=timedelta(days=1),
-)
+with DAG(dag_id='etl_sales_data',
+         default_args=default_args,
+         schedule_interval='@daily',
+         catchup=False) as dag:
 
-# Definição das tarefas (tasks)
-t1 = PythonOperator(
-    task_id='extract',
-    python_callable=extract,
-    dag=dag,
-)
+    extract_task = PythonOperator(
+        task_id='extract_data',
+        python_callable=extract
+    )
 
-t2 = PythonOperator(
-    task_id='transform',
-    python_callable=transform,
-    dag=dag,
-)
+    transform_task = PythonOperator(
+        task_id='transform_data',
+        python_callable=transform
+    )
 
-t3 = PythonOperator(
-    task_id='load',
-    python_callable=load,
-    dag=dag,
-)
+    load_task = PythonOperator(
+        task_id='load_data',
+        python_callable=load
+    )
 
-# Definindo a ordem das tarefas
-t1 >> t2 >> t3
+    extract_task >> transform_task >> load_task
