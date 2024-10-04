@@ -1,62 +1,57 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.hooks.base_hook import BaseHook
-import pandas as pd
-import mysql.connector
-from datetime import datetime
+from airflow.operators.python_operator import PythonOperator
+from airflow.utils.dates import days_ago
+from datetime import timedelta
 
-def extract_data():
-    # Conexão com o banco de dados MySQL
-    conn = mysql.connector.connect(
-        host='mysql',
-        user='airflow',
-        password='123456',
-        database='airflow'
-    )
-    query = "SELECT * FROM your_source_table"
-    df = pd.read_sql(query, conn)
-    conn.close()
-    return df
+# Funções de exemplo para as etapas do ETL
+def extract(**kwargs):
+    # Código de extração de dados
+    pass
 
-def transform_data(df):
-    # Transforme os dados conforme necessário
-    df['new_column'] = df['existing_column'] * 2  # Exemplo de transformação
-    return df
+def transform(**kwargs):
+    # Código de transformação de dados
+    pass
 
-def load_data(df):
-    # Conexão com o banco de dados MySQL
-    conn = mysql.connector.connect(
-        host='mysql',
-        user='airflow',
-        password='123456',
-        database='airflow'
-    )
-    df.to_sql('your_target_table', conn, if_exists='replace', index=False)
-    conn.close()
+def load(**kwargs):
+    # Código de carga de dados
+    pass
 
-with DAG(
-    'etl_dag',
-    default_args={'retries': 1},
-    description='A simple ETL DAG',
-    schedule_interval='@daily',
-    start_date=datetime(2023, 1, 1),
-    catchup=False,
-) as dag:
+# Definição da DAG
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': days_ago(1),
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
 
-    extract = PythonOperator(
-        task_id='extract',
-        python_callable=extract_data,
-    )
+dag = DAG(
+    'etl_example',
+    default_args=default_args,
+    description='ETL example DAG',
+    schedule_interval=timedelta(days=1),
+)
 
-    transform = PythonOperator(
-        task_id='transform',
-        python_callable=lambda: transform_data(extract.output),
-    )
+# Definição das tarefas (tasks)
+t1 = PythonOperator(
+    task_id='extract',
+    python_callable=extract,
+    dag=dag,
+)
 
-    load = PythonOperator(
-        task_id='load',
-        python_callable=load_data,
-        op_kwargs={'df': transform.output},
-    )
+t2 = PythonOperator(
+    task_id='transform',
+    python_callable=transform,
+    dag=dag,
+)
 
-    extract >> transform >> load
+t3 = PythonOperator(
+    task_id='load',
+    python_callable=load,
+    dag=dag,
+)
+
+# Definindo a ordem das tarefas
+t1 >> t2 >> t3
