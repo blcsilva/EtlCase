@@ -1,0 +1,5 @@
+apache-airflow[mysql]==2.7.0
+sqlalchemy<2.0
+mysqlclient
+mysql-connector-python
+
