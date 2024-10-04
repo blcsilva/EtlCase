@@ -1,4 +1,3 @@
-version: '3'
 services:
   postgres:
     image: postgres:13
@@ -41,6 +40,9 @@ services:
       AIRFLOW__CELERY__BROKER_URL: 'redis://redis:6379/0'
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./airflow.cfg:/usr/local/airflow/airflow.cfg  # Mapeia o arquivo local
+      - ./dags:/usr/local/airflow/dags
+      - ./data:/usr/local/airflow/data
     networks:
       - airflow-network
     depends_on:
@@ -64,6 +66,9 @@ services:
       AIRFLOW__CELERY__BROKER_URL: 'redis://redis:6379/0'
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./airflow.cfg:/usr/local/airflow/airflow.cfg  # Mapeia o arquivo local
+      - ./dags:/usr/local/airflow/dags
+      - ./data:/usr/local/airflow/data
     networks:
       - airflow-network
     depends_on:
